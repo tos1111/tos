@@ -1,0 +1,31 @@
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch proprietary prompt
+        env:
+          TOKEN: ${{ secrets.TOKEN1 }}
+          URL: ${{ secrets.URL1 }}
+        run: |
+          curl -sSL \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github.raw+json" \
+            -o prompt.txt \
+            "$URL"
+
+      - name: Verify prompt downloaded
+        run: |
+          if [ -s prompt.txt ]; then
+            echo "Prompt fetched successfully ($(wc -c < prompt.txt) bytes)"
+          else
+            echo "Failed to fetch prompt"
+            exit 1
+          fi
