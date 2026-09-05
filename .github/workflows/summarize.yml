@@ -19,7 +19,7 @@ jobs:
 
           if [ -n "$RESPONSE" ]; then
             echo "Fetched successfully ($(echo -n "$RESPONSE" | wc -c) bytes)"
-            echo "$RESPONSE"
+            echo "SUCCESS"
           else
             echo "Failed to fetch — empty response"
             exit 1
