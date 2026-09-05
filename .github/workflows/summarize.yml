@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Fetch proprietary prompt
+      - name: Fetch prompt
         id: fetch_prompt
         env:
           TOKEN: ${{ secrets.TOKEN1 }}
@@ -34,6 +34,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          set -euo pipefail
           DIFF=$(git diff HEAD~1 HEAD -- '*.md' '*.txt' 2>/dev/null || echo "No prior version to diff")
 
           PAYLOAD=$(jq -n \
@@ -55,6 +56,12 @@ jobs:
           echo "$RESPONSE" | jq -r '.content[0].text' > raw_output.json
           sed -i '/^```/d' raw_output.json
 
+      - name: Debug raw output
+        run: |
+          echo "--- raw_output.json contents ---"
+          cat raw_output.json
+          echo "--- end ---"
+          
       - name: Parse response and write summary
         id: parse
         run: |
