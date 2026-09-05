@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
           > tos_content.txt
-          for f in $CHANGED_FILES; do echo "=== $f ===" >> tos_content.txt; cat "$f" >> tos_content.txt; echo "" >> tos_content.txt; done
+          echo "$CHANGED_FILES" | while IFS= read -r f; do echo "=== $f ===" >> tos_content.txt; cat "$f" >> tos_content.txt; echo "" >> tos_content.txt; done
           git diff HEAD~1 HEAD -- '*.md' '*.txt' > diff.txt 2>/dev/null || echo "No prior version to diff" > diff.txt
           echo 'Respond ONLY with valid JSON in this exact shape, no markdown fences, no preamble: {"company": "<string>", "product": "<string>", "summary": "<full markdown summary as a string, using \n for newlines>", "secondary_field": "<string or null>"}' > instructions.txt
           PAYLOAD=$(jq -n --arg system "$(cat prompt.txt)" --rawfile tos tos_content.txt --rawfile diffcontent diff.txt --rawfile instr instructions.txt '{model: "claude-sonnet-4-6", max_tokens: 8192, system: $system, messages: [{role: "user", content: ("Here is the ToS document to analyze:\n\n" + $tos + "\n\nDiff from previous version (if any):\n\n" + $diffcontent + "\n\n" + $instr)}]}')
