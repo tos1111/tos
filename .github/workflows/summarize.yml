@@ -1,16 +1,16 @@
-name: PR Review
+name: Summarize
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [closed]
 
 jobs:
-  review:
+  fetch-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch proprietary prompt
+      - name: Fetch test file
         env:
           TOKEN: ${{ secrets.TOKEN1 }}
           URL: ${{ secrets.URL1 }}
@@ -21,11 +21,12 @@ jobs:
             -o prompt.txt \
             "$URL"
 
-      - name: Verify prompt downloaded
+      - name: Verify file downloaded
         run: |
           if [ -s prompt.txt ]; then
-            echo "Prompt fetched successfully ($(wc -c < prompt.txt) bytes)"
+            echo "Fetched successfully ($(wc -c < prompt.txt) bytes)"
+            cat prompt.txt
           else
-            echo "Failed to fetch prompt"
+            echo "Failed to fetch"
             exit 1
           fi
