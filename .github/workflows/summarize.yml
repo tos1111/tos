@@ -12,9 +12,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - name: Check for relevant changes
+        id: check
+        run: |
+          CHANGED_FILES=$(git diff --name-only --diff-filter=d HEAD~1 HEAD -- '*.md' '*.txt' ':!*-summary.md' 2>/dev/null || true)
+          if [ -z "$CHANGED_FILES" ]; then
+            CHANGED_FILES=$(git show --name-only --diff-filter=d --pretty="" HEAD -- '*.md' '*.txt' ':!*-summary.md' || true)
+          fi
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No relevant additions/modifications found — skipping entire job."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Fetch proprietary prompt
         id: fetch_prompt
+        if: steps.check.outputs.has_changes == 'true'
         env:
           TOKEN: ${{ secrets.TOKEN1 }}
           URL: ${{ secrets.URL1 }}
@@ -28,17 +45,14 @@ jobs:
 
       - name: Call Claude API
         id: call_claude
+        if: steps.check.outputs.has_changes == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -euo pipefail
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- '*.md' '*.txt' 2>/dev/null | grep -v -- '-summary.md$' || true)
+          CHANGED_FILES=$(git diff --name-only --diff-filter=d HEAD~1 HEAD -- '*.md' '*.txt' 2>/dev/null | grep -v -- '-summary.md$' || true)
           if [ -z "$CHANGED_FILES" ]; then
-            CHANGED_FILES=$(git show --name-only --pretty="" HEAD -- '*.md' '*.txt' | grep -v -- '-summary.md$' || true)
-          fi
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No ToS source file found in this push — nothing to analyze."
-            exit 1
+            CHANGED_FILES=$(git show --name-only --diff-filter=d --pretty="" HEAD -- '*.md' '*.txt' | grep -v -- '-summary.md$' || true)
           fi
           > tos_content.txt
           echo "$CHANGED_FILES" | while IFS= read -r f; do echo "=== $f ===" >> tos_content.txt; cat "$f" >> tos_content.txt; echo "" >> tos_content.txt; done
@@ -51,6 +65,7 @@ jobs:
 
       - name: Parse response and write summary
         id: parse
+        if: steps.check.outputs.has_changes == 'true'
         run: |
           COMPANY=$(jq -r '.company' raw_output.json)
           PRODUCT=$(jq -r '.product' raw_output.json)
@@ -75,6 +90,7 @@ jobs:
           fi
 
       - name: Commit summary
+        if: steps.check.outputs.has_changes == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -83,7 +99,7 @@ jobs:
           git push
 
       - name: Send notice
-        if: steps.parse.outputs.flag_set == 'true'
+        if: steps.check.outputs.has_changes == 'true' && steps.parse.outputs.flag_set == 'true'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.EMAIL_SMTP_SERVER }}
