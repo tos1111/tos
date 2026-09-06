@@ -6,7 +6,8 @@ set -euo pipefail
 
 COMPANY=$(jq -r '.company' raw_output.json | tr -cd 'a-z0-9-')
 PRODUCT=$(jq -r '.product' raw_output.json | tr -cd 'a-z0-9-')
-FILENAME="${COMPANY}-${PRODUCT}-summary.md"
+FILE_DIR=$(dirname "$FILE_PATH")
+FILENAME="${FILE_DIR}/${COMPANY}-${PRODUCT}-summary.md"
 
 ENCODED_FILE=$(jq -rn --arg path "$FILE_PATH" '$path | @uri')
 BASE_URL="https://github.com/${REPO}/blob/main/${ENCODED_FILE}"
@@ -32,8 +33,14 @@ jq -c '.sections[]' raw_output.json | while IFS= read -r section; do
       END=$(echo "$item" | jq -r '.end')
       QUOTE=$(echo "$item" | jq -r '.quote')
       SUMMARY_TEXT=$(echo "$item" | jq -r '.summary')
-      LINK="${BASE_URL}#L${START}-L${END}"
-      echo "${SUMMARY_TEXT} <sup>[${START}-${END}](${LINK} \"${QUOTE}\")</sup>" >> "$FILENAME"
+      if [ "$START" = "$END" ]; then
+        LINK="${BASE_URL}#L${START}"
+        RANGE_LABEL="${START}"
+      else
+        LINK="${BASE_URL}#L${START}-L${END}"
+        RANGE_LABEL="${START}-${END}"
+      fi
+      echo "- ${SUMMARY_TEXT} <sup>[${RANGE_LABEL}](${LINK} \"${QUOTE}\")</sup>" >> "$FILENAME"
       echo "" >> "$FILENAME"
     done
   done
